@@ -75,8 +75,7 @@ impl Cat {
 }
 
 #[no_mangle]
-#[link(name = "DllGetClassObject")]
-extern "stdcall" fn dll_get_class_object(
+extern "stdcall" fn DllGetClassObject(
     rclsid: REFCLSID,
     riid: REFIID,
     ppv: *mut LPVOID,

@@ -31,7 +31,7 @@ pub type DWORD = c_ulong;
 pub const COINIT_APARTMENTTHREADED: DWORD = 0x2;
 pub const CLSCTX_INPROC_SERVER: DWORD = 0x1;
 
-
+#[link(name = "ole32")]
 extern "system" {
     // https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex
     // Initializes the COM library for use by the calling thread, sets the thread's concurrency model,
@@ -55,10 +55,12 @@ extern "system" {
     pub fn CoUninitialize() -> ();
 }
 
-extern "C" {
-    pub static IID_IUnknown: IID;
-}
-
+pub const IID_IUnknown: IID = IID {
+    data1: 0u32,
+                 data2: 0u16,
+                 data3: 0u16,
+                 data4: [192u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 70u8],
+};
 pub const IID_ICAT: IID = IID {
     data1: 0xf5353c58,
     data2: 0xcfd9,
