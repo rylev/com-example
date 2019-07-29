@@ -10,7 +10,7 @@
 
 use common::{
     failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IAnimal, IID_IUnknown, IUnknown,
-    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, IID_CAT, IID_IANIMAL, LPVOID, REFCLSID, REFIID,
+    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, IID_ICAT, IID_IANIMAL, LPVOID, REFCLSID, REFIID,
 };
 use std::os::raw::c_void;
 
@@ -23,7 +23,7 @@ pub fn eat_and_ignore_humans() {
         }
         let mut unknown = std::ptr::null_mut::<c_void>();
         hr = CoGetClassObject(
-            &IID_CAT as REFCLSID,
+            &IID_ICAT as REFCLSID,
             CLSCTX_INPROC_SERVER,
             std::ptr::null_mut::<c_void>(),
             &IID_IUnknown as REFIID,
@@ -38,8 +38,8 @@ pub fn eat_and_ignore_humans() {
             return;
         }
         let mut animal = std::ptr::null_mut::<c_void>();
-        hr = (*(unknown as *const IUnknown))
-            .query_interface(&IID_IANIMAL, &mut animal as *mut LPVOID);
+        hr = (*(unknown as *mut IUnknown))
+            .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
         if failed(hr) {
             println!("Failed to get IAnimal interface");
             return;
@@ -51,7 +51,7 @@ pub fn eat_and_ignore_humans() {
 
         // This doesn't compile
         // hr = (*(animal as *const IAnimal)).ignore_humans();
-        (*(animal as *const IAnimal)).release();
+        (*(animal as *mut IAnimal)).release();
 
         CoUninitialize();
     };

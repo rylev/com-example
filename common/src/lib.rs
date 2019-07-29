@@ -19,6 +19,7 @@ pub fn failed(result: HRESULT) -> bool {
 }
 pub const E_NOINTERFACE: HRESULT = -0x7FFFBFFE;
 pub const NOERROR: HRESULT = 0x0;
+pub const CLASS_E_CLASSNOTAVAILABLE: HRESULT = -0x7FFBFEEF;
 
 #[allow(non_camel_case_types)]
 pub type c_long = i32;
@@ -58,7 +59,7 @@ extern "C" {
     pub static IID_IUnknown: IID;
 }
 
-pub const IID_CAT: IID = IID {
+pub const IID_ICAT: IID = IID {
     data1: 0xf5353c58,
     data2: 0xcfd9,
     data3: 0x4204,
@@ -69,6 +70,13 @@ pub const IID_IANIMAL: IID = IID {
     data2: 0xc50f,
     data3: 0x45e0,
     data4: [0x92, 0x84, 0x29, 0x1c, 0xe5, 0xa6, 0xf7, 0x71],
+};
+// 0xC5F45CBC,0x4439,0x418C,0xA9,0xF9,0x05,0xAC,0x67,0x52,0x5E,0x43
+pub const CLSID_CAT: IID = IID {
+    data1: 0xC5F45CBC,
+    data2: 0x4439,
+    data3: 0x418C,
+    data4: [0xA9, 0xF9, 0x05, 0xAC, 0x67, 0x52, 0x5E, 0x43],
 };
 
 
@@ -85,55 +93,59 @@ pub struct IUnknown {
     vtable: *const ICatVTable,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct ICatVTable {
-    ignore_humans: extern "stdcall" fn(*const ICat) -> HRESULT,
-    eat: extern "stdcall" fn(*const ICat) -> HRESULT,
-    query_interface: extern "stdcall" fn(*const ICat, *const IID, *mut *mut c_void) -> HRESULT,
-    add_ref: extern "stdcall" fn(*const ICat) -> u32,
-    release: extern "stdcall" fn(*const ICat) -> u32,
+    // IUnknown
+    pub QueryInterface: extern "stdcall" fn(*mut ICat, *const IID, *mut *mut c_void) -> HRESULT,
+    pub AddRef: extern "stdcall" fn(*mut ICat) -> u32,
+    pub Release: extern "stdcall" fn(*mut ICat) -> u32,
+    // IAnimal
+    pub Eat: extern "stdcall" fn(*mut ICat) -> HRESULT,
+    // ICat
+    pub IgnoreHumans: extern "stdcall" fn(*mut ICat) -> HRESULT,
 }
 
 impl ICat {
-    pub unsafe fn ignore_humans(&self) -> HRESULT {
-        ((*self.vtable).ignore_humans)(self)
+    pub unsafe fn ignore_humans(&mut self) -> HRESULT {
+        ((*self.vtable).IgnoreHumans)(self)
     }
-    pub unsafe fn eat(&self) -> HRESULT {
-        ((*self.vtable).eat)(self)
+    pub unsafe fn eat(&mut self) -> HRESULT {
+        ((*self.vtable).Eat)(self)
     }
-    pub unsafe fn query_interface(&self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
-        ((*self.vtable).query_interface)(self, riid, ppv)
+    pub unsafe fn query_interface(&mut self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+        ((*self.vtable).QueryInterface)(self, riid, ppv)
     }
-    pub unsafe fn add_ref(&self) -> u32 {
-        ((*self.vtable).add_ref)(self)
+    pub unsafe fn add_ref(&mut self) -> u32 {
+        ((*self.vtable).AddRef)(self)
     }
-    pub unsafe fn release(&self) -> u32 {
-        ((*self.vtable).release)(self)
+    pub unsafe fn release(&mut self) -> u32 {
+        ((*self.vtable).Release)(self)
     }
 }
 impl IAnimal {
-    pub unsafe fn eat(&self) -> HRESULT {
-        ((*self.vtable).eat)(self as *const IAnimal as *const ICat)
+    pub unsafe fn eat(&mut self) -> HRESULT {
+        ((*self.vtable).Eat)(self as *mut IAnimal as *mut ICat)
     }
-    pub unsafe fn query_interface(&self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
-        ((*self.vtable).query_interface)(self as *const IAnimal as *const ICat, riid, ppv)
+    pub unsafe fn query_interface(&mut self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+        ((*self.vtable).QueryInterface)(self as *mut IAnimal as *mut ICat, riid, ppv)
     }
-    pub unsafe fn add_ref(&self) -> u32 {
-        ((*self.vtable).add_ref)(self as *const IAnimal as *const ICat)
+    pub unsafe fn add_ref(&mut self) -> u32 {
+        ((*self.vtable).AddRef)(self as *mut IAnimal as *mut ICat)
     }
-    pub unsafe fn release(&self) -> u32 {
-        ((*self.vtable).release)(self as *const IAnimal as *const ICat)
+    pub unsafe fn release(&mut self) -> u32 {
+        ((*self.vtable).Release)(self as *mut IAnimal as *mut ICat)
     }
 }
 
 impl IUnknown {
-    pub unsafe fn query_interface(&self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
-        ((*self.vtable).query_interface)(self as *const IUnknown as *const ICat, riid, ppv)
+    pub unsafe fn query_interface(&mut self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+        ((*self.vtable).QueryInterface)(self as *mut IUnknown as *mut ICat, riid, ppv)
     }
-    pub unsafe fn add_ref(&self) -> u32 {
-        ((*self.vtable).add_ref)(self as *const IUnknown as *const ICat)
+    pub unsafe fn add_ref(&mut self) -> u32 {
+        ((*self.vtable).AddRef)(self as *mut IUnknown as *mut ICat)
     }
-    pub unsafe fn release(&self) -> u32 {
-        ((*self.vtable).release)(self as *const IUnknown as *const ICat)
+    pub unsafe fn release(&mut self) -> u32 {
+        ((*self.vtable).Release)(self as *mut IUnknown as *mut ICat)
     }
 }
