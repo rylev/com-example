@@ -17,6 +17,8 @@ pub type HRESULT = c_long;
 pub fn failed(result: HRESULT) -> bool {
     result < 0
 }
+pub const E_NOINTERFACE: HRESULT = -0x7FFFBFFE;
+pub const NOERROR: HRESULT = 0x0;
 
 #[allow(non_camel_case_types)]
 pub type c_long = i32;
@@ -27,6 +29,7 @@ pub type DWORD = c_ulong;
 
 pub const COINIT_APARTMENTTHREADED: DWORD = 0x2;
 pub const CLSCTX_INPROC_SERVER: DWORD = 0x1;
+
 
 extern "system" {
     // https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex
@@ -51,27 +54,86 @@ extern "system" {
     pub fn CoUninitialize() -> ();
 }
 
-#[repr(C)]
-pub struct ICat {
-    pub ref_count: u32,
-    pub iunknown_vtable: *const IUnknownVTable,
-    pub ianimal_vtable: *const IAnimalVTable,
-    pub icat_vtable: *const ICatVTable,
+extern "C" {
+    pub static IID_IUnknown: IID;
 }
 
+pub const IID_CAT: IID = IID {
+    data1: 0xf5353c58,
+    data2: 0xcfd9,
+    data3: 0x4204,
+    data4: [0x8d, 0x92, 0xd2, 0x74, 0xc7, 0x57, 0x8b, 0x53],
+};
+pub const IID_IANIMAL: IID = IID {
+    data1: 0xeff8970e,
+    data2: 0xc50f,
+    data3: 0x45e0,
+    data4: [0x92, 0x84, 0x29, 0x1c, 0xe5, 0xa6, 0xf7, 0x71],
+};
+
+
 #[repr(C)]
-pub struct IUnknownVTable {
-    pub query_interface: extern "stdcall" fn(*const MyCat, &IID, *mut *mut c_void) -> HRESULT,
-    pub add_ref: extern "stdcall" fn(*const MyCat) -> u32,
-    pub release: extern "stdcall" fn(*const MyCat) -> u32,
+pub struct ICat {
+    vtable: *const ICatVTable,
+}
+#[repr(C)]
+pub struct IAnimal {
+    vtable: *const ICatVTable,
+}
+#[repr(C)]
+pub struct IUnknown {
+    vtable: *const ICatVTable,
 }
 
 #[repr(C)]
 pub struct ICatVTable {
-    pub ignore_humans: extern "stdcall" fn(*const MyCat) -> HRESULT,
+    ignore_humans: extern "stdcall" fn(*const ICat) -> HRESULT,
+    eat: extern "stdcall" fn(*const ICat) -> HRESULT,
+    query_interface: extern "stdcall" fn(*const ICat, *const IID, *mut *mut c_void) -> HRESULT,
+    add_ref: extern "stdcall" fn(*const ICat) -> u32,
+    release: extern "stdcall" fn(*const ICat) -> u32,
 }
 
-#[repr(C)]
-pub struct IAnimalVTable {
-    pub eat: extern "stdcall" fn(*const MyCat) -> HRESULT,
+impl ICat {
+    pub unsafe fn ignore_humans(&self) -> HRESULT {
+        ((*self.vtable).ignore_humans)(self)
+    }
+    pub unsafe fn eat(&self) -> HRESULT {
+        ((*self.vtable).eat)(self)
+    }
+    pub unsafe fn query_interface(&self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+        ((*self.vtable).query_interface)(self, riid, ppv)
+    }
+    pub unsafe fn add_ref(&self) -> u32 {
+        ((*self.vtable).add_ref)(self)
+    }
+    pub unsafe fn release(&self) -> u32 {
+        ((*self.vtable).release)(self)
+    }
+}
+impl IAnimal {
+    pub unsafe fn eat(&self) -> HRESULT {
+        ((*self.vtable).eat)(self as *const IAnimal as *const ICat)
+    }
+    pub unsafe fn query_interface(&self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+        ((*self.vtable).query_interface)(self as *const IAnimal as *const ICat, riid, ppv)
+    }
+    pub unsafe fn add_ref(&self) -> u32 {
+        ((*self.vtable).add_ref)(self as *const IAnimal as *const ICat)
+    }
+    pub unsafe fn release(&self) -> u32 {
+        ((*self.vtable).release)(self as *const IAnimal as *const ICat)
+    }
+}
+
+impl IUnknown {
+    pub unsafe fn query_interface(&self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+        ((*self.vtable).query_interface)(self as *const IUnknown as *const ICat, riid, ppv)
+    }
+    pub unsafe fn add_ref(&self) -> u32 {
+        ((*self.vtable).add_ref)(self as *const IUnknown as *const ICat)
+    }
+    pub unsafe fn release(&self) -> u32 {
+        ((*self.vtable).release)(self as *const IUnknown as *const ICat)
+    }
 }
