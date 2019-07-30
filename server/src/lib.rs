@@ -136,22 +136,22 @@ unsafe extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
 unsafe extern "stdcall" fn release(this: *mut ICat) -> u32 {
     println!("Releasing...");
     let this = this as *mut Cat;
-        (*this).ref_count -= 1;
-        println!("Count now {}", (*this).ref_count);
-        let count = (*this).ref_count;
-        if count == 0 {
-            println!("Count is 0. Freeing memory...");
-            let _ = Box::from_raw(this);
-        }
-        count
+    (*this).ref_count -= 1;
+    println!("Count now {}", (*this).ref_count);
+    let count = (*this).ref_count;
+    if count == 0 {
+        println!("Count is 0. Freeing memory...");
+        let _ = Box::from_raw(this);
+    }
+    count
 }
 
-unsafe extern "stdcall" fn ignore_humans(this: *mut ICat) -> HRESULT {
+unsafe extern "stdcall" fn ignore_humans(_this: *mut ICat) -> HRESULT {
     println!("Ignoring...");
     NOERROR
 }
 
-unsafe extern "stdcall" fn eat(this: *mut ICat) -> HRESULT {
+unsafe extern "stdcall" fn eat(_this: *mut ICat) -> HRESULT {
     println!("Eating...");
     NOERROR
 }

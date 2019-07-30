@@ -10,58 +10,95 @@
 
 use common::{
     failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IID_IUnknown, CLSCTX_INPROC_SERVER,
-    COINIT_APARTMENTTHREADED, LPVOID, REFCLSID, REFIID,
+    COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID,
 };
 use server::{IAnimal, IUnknown, CLSID_CAT, IID_IANIMAL};
 use std::os::raw::c_void;
-use com_client::eat;
 
 fn main() {
-    unsafe {
-        // COM Library Initialisation
-        let hr = CoInitializeEx(std::ptr::null_mut::<c_void>(), COINIT_APARTMENTTHREADED);
-        if failed(hr) {
-            println!("Failed to initialize COM Library!");
+    let result = initialize_ex();
+
+    if let Err(hr) = result {
+        println!("Failed to initialize COM Library: {}", hr);
+        return;
+    }
+
+    let result = get_class_object(&CLSID_CAT);
+    let unknown = match result {
+        Ok(unknown) => unknown,
+        Err(hr) => {
+            println!("Failed to get com class object {}", hr);
             return;
         }
-        let mut unknown = std::ptr::null_mut::<c_void>();
-        hr = CoGetClassObject(
-            &CLSID_CAT as REFCLSID,
+    };
+    println!("Got unknown.");
+    // let mut animal = std::ptr::null_mut::<c_void>();
+    // hr = (*(unknown as *mut IUnknown))
+    //     .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
+
+    // if failed(hr) {
+    //     println!("Failed to get IAnimal interface");
+    //     return;
+    // }
+    // if animal.is_null() {
+    //     println!("Pointer to IAnimal is null");
+    //     return;
+    // }
+    // println!("Got animal.");
+    // (*(unknown as *mut IUnknown)).release();
+
+    // let animal = animal as *mut IAnimal;
+    // (*animal).eat();
+
+    // // This doesn't compile
+    // // hr = (*animal).ignore_humans();
+    // (*animal).release();
+
+    uninitialize();
+}
+
+struct ComPtr<T> {
+    item: *const T,
+}
+
+impl<T> ComPtr<T> {
+    fn new(item: *const T) -> ComPtr<T> {
+        assert!(!item.is_null());
+        ComPtr { item }
+    }
+}
+
+// TODO: accept threading options
+fn initialize_ex() -> Result<(), HRESULT> {
+    let hr = unsafe { CoInitializeEx(std::ptr::null_mut::<c_void>(), COINIT_APARTMENTTHREADED) };
+    if failed(hr) {
+        // TODO: https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-couninitialize
+        // A thread must call CoUninitialize once for each successful call it has made to the
+        // CoInitialize or CoInitializeEx function, including any call that returns S_FALSE.
+        return Err(hr);
+    }
+    Ok(())
+}
+
+// TODO: accept server options
+fn get_class_object(iid: &IID) -> Result<ComPtr<IUnknown>, HRESULT> {
+    let mut unknown = std::ptr::null_mut::<c_void>();
+    let hr = unsafe {
+        CoGetClassObject(
+            iid as REFCLSID,
             CLSCTX_INPROC_SERVER,
             std::ptr::null_mut::<c_void>(),
             &IID_IUnknown as REFIID,
             &mut unknown as *mut LPVOID,
-        );
-
-        if failed(hr) {
-            println!("Failed to get com class object {}", hr);
-            return;
-        }
-        if unknown.is_null() {
-            println!("Pointer to IUnknown is null");
-            return;
-        }
-        println!("Got unknown.");
-
-        let mut animal = std::ptr::null_mut::<c_void>();
-        hr = (*(unknown as *mut IUnknown))
-            .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
-
-        if failed(hr) {
-            println!("Failed to get IAnimal interface");
-            return;
-        }
-        if animal.is_null() {
-            println!("Pointer to IAnimal is null");
-            return;
-        }
-        println!("Got animal.");
-        (*(unknown as *mut IUnknown)).release();
-
-        let animal = animal as *mut IAnimal;
-        (*animal).eat();
-
-        // Uninitialise COM Library
-        CoUninitialize();
+        )
     };
+    if failed(hr) {
+        return Err(hr);
+    }
+
+    Ok(ComPtr::new(unknown as *const IUnknown))
+}
+
+fn uninitialize() {
+    unsafe { CoUninitialize() }
 }
