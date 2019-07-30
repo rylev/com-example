@@ -75,11 +75,7 @@ impl Cat {
 }
 
 #[no_mangle]
-extern "stdcall" fn DllGetClassObject(
-    rclsid: REFCLSID,
-    riid: REFIID,
-    ppv: *mut LPVOID,
-) -> HRESULT {
+extern "stdcall" fn DllGetClassObject(rclsid: REFCLSID, riid: REFIID, ppv: *mut LPVOID) -> HRESULT {
     unsafe {
         if *rclsid != CLSID_CAT {
             return CLASS_E_CLASSNOTAVAILABLE;

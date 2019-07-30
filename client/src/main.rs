@@ -10,7 +10,8 @@
 
 use common::{
     failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IAnimal, IID_IUnknown, IUnknown,
-    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CLSID_CAT, IID_IANIMAL, LPVOID, REFCLSID, REFIID,
+    CLSCTX_INPROC_SERVER, CLSID_CAT, COINIT_APARTMENTTHREADED, IID_IANIMAL, LPVOID, REFCLSID,
+    REFIID,
 };
 use std::os::raw::c_void;
 
@@ -50,7 +51,6 @@ fn main() {
         }
 
         let animal = animal as *mut IAnimal;
-        
 
         (*animal).eat();
 
@@ -59,6 +59,5 @@ fn main() {
         (*animal).release();
 
         CoUninitialize();
-    
     };
 }

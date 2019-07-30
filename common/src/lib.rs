@@ -57,9 +57,9 @@ extern "system" {
 
 pub const IID_IUnknown: IID = IID {
     data1: 0u32,
-                 data2: 0u16,
-                 data3: 0u16,
-                 data4: [192u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 70u8],
+    data2: 0u16,
+    data3: 0u16,
+    data4: [192u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 70u8],
 };
 pub const IID_ICAT: IID = IID {
     data1: 0xf5353c58,
