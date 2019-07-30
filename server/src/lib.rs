@@ -72,6 +72,9 @@ impl ICat {
     }
 }
 impl IAnimal {
+    pub fn eat(&mut self) -> HRESULT {
+        unsafe { self.raw_eat() }
+    }
     pub unsafe fn raw_eat(&mut self) -> HRESULT {
         ((*self.vtable).Eat)(self as *mut IAnimal as *mut ICat)
     }

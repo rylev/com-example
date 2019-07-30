@@ -33,33 +33,19 @@ fn main() {
     };
     println!("Got unknown.");
     let result = unknown.query_interface::<IAnimal>();
-    let cat = match result {
-        Ok(cat) => cat,
+    let mut animal = match result {
+        Ok(animal) => animal,
         Err(hr) => {
-            println!("We couldn't get a cat: {}", hr);
+            println!("Failed to get an animal: {}", hr);
             return;
         }
     };
-    // hr = (*(unknown as *mut IUnknown))
-    //     .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
 
-    // if failed(hr) {
-    //     println!("Failed to get IAnimal interface");
-    //     return;
-    // }
-    // if animal.is_null() {
-    //     println!("Pointer to IAnimal is null");
-    //     return;
-    // }
-    // println!("Got animal.");
-    // (*(unknown as *mut IUnknown)).release();
+    println!("Got animal.");
+    animal.eat();
 
-    // let animal = animal as *mut IAnimal;
-    // (*animal).eat();
-
-    // // This doesn't compile
-    // // hr = (*animal).ignore_humans();
-    // (*animal).release();
+    // This doesn't compile
+    // animal.ignore_humans();
 
     uninitialize();
 }
