@@ -64,3 +64,14 @@ pub const IID_IUnknown: IID = IID {
     data3: 0u16,
     data4: [192u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 70u8],
 };
+
+pub struct ComPtr<T> {
+    item: *const T,
+}
+
+impl<T> ComPtr<T> {
+    pub fn new(item: *const T) -> ComPtr<T> {
+        assert!(!item.is_null());
+        ComPtr { item }
+    }
+}

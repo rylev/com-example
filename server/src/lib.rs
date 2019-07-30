@@ -1,6 +1,6 @@
 use common::{
-    failed, IID_IUnknown, CLASS_E_CLASSNOTAVAILABLE, E_NOINTERFACE, HRESULT, IID, LPVOID, NOERROR,
-    REFCLSID, REFIID,
+    failed, ComPtr, IID_IUnknown, CLASS_E_CLASSNOTAVAILABLE, E_NOINTERFACE, HRESULT, IID, LPVOID,
+    NOERROR, REFCLSID, REFIID,
 };
 use std::os::raw::c_void;
 
@@ -25,27 +25,45 @@ pub const CLSID_CAT: IID = IID {
     data4: [0xA9, 0xF9, 0x05, 0xAC, 0x67, 0x52, 0x5E, 0x43],
 };
 
+pub trait ComInterface {
+    const IID: IID;
+}
+
 #[repr(C)]
 pub struct ICat {
     pub vtable: *const ICatVTable,
+}
+impl ComInterface for ICat {
+    const IID: IID = IID_ICAT;
 }
 #[repr(C)]
 pub struct IAnimal {
     pub vtable: *const ICatVTable,
 }
+impl ComInterface for IAnimal {
+    const IID: IID = IID_IANIMAL;
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct IUnknownVTable {
+    pub QueryInterface:
+        unsafe extern "stdcall" fn(*mut ICat, *const IID, *mut *mut c_void) -> HRESULT,
+    pub AddRef: unsafe extern "stdcall" fn(*mut ICat) -> u32,
+    pub Release: unsafe extern "stdcall" fn(*mut ICat) -> u32,
+}
 #[repr(C)]
 pub struct IUnknown {
-    pub vtable: *const ICatVTable,
+    pub vtable: *const IUnknownVTable,
+}
+impl ComInterface for IUnknown {
+    const IID: IID = IID_IUnknown;
 }
 
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct ICatVTable {
-    // IUnknown
-    pub QueryInterface:
-        unsafe extern "stdcall" fn(*mut ICat, *const IID, *mut *mut c_void) -> HRESULT,
-    pub AddRef: unsafe extern "stdcall" fn(*mut ICat) -> u32,
-    pub Release: unsafe extern "stdcall" fn(*mut ICat) -> u32,
+    iunknown: IUnknownVTable,
     // IAnimal
     pub Eat: unsafe extern "stdcall" fn(*mut ICat) -> HRESULT,
     // ICat
@@ -53,45 +71,66 @@ pub struct ICatVTable {
 }
 
 impl ICat {
-    pub unsafe fn ignore_humans(&mut self) -> HRESULT {
+    pub unsafe fn raw_ignore_humans(&mut self) -> HRESULT {
         ((*self.vtable).IgnoreHumans)(self)
     }
-    pub unsafe fn eat(&mut self) -> HRESULT {
+    pub unsafe fn raw_eat(&mut self) -> HRESULT {
         ((*self.vtable).Eat)(self)
     }
-    pub unsafe fn query_interface(&mut self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
-        ((*self.vtable).QueryInterface)(self, riid, ppv)
+    pub unsafe fn raw_query_interface(
+        &mut self,
+        riid: *const IID,
+        ppv: *mut *mut c_void,
+    ) -> HRESULT {
+        ((*self.vtable).iunknown.QueryInterface)(self, riid, ppv)
     }
-    pub unsafe fn add_ref(&mut self) -> u32 {
-        ((*self.vtable).AddRef)(self)
+    pub unsafe fn raw_add_ref(&mut self) -> u32 {
+        ((*self.vtable).iunknown.AddRef)(self)
     }
-    pub unsafe fn release(&mut self) -> u32 {
-        ((*self.vtable).Release)(self)
+    pub unsafe fn raw_release(&mut self) -> u32 {
+        ((*self.vtable).iunknown.Release)(self)
     }
 }
 impl IAnimal {
-    pub unsafe fn eat(&mut self) -> HRESULT {
+    pub unsafe fn raw_eat(&mut self) -> HRESULT {
         ((*self.vtable).Eat)(self as *mut IAnimal as *mut ICat)
     }
-    pub unsafe fn query_interface(&mut self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
-        ((*self.vtable).QueryInterface)(self as *mut IAnimal as *mut ICat, riid, ppv)
+    pub unsafe fn raw_query_interface(
+        &mut self,
+        riid: *const IID,
+        ppv: *mut *mut c_void,
+    ) -> HRESULT {
+        ((*self.vtable).iunknown.QueryInterface)(self as *mut IAnimal as *mut ICat, riid, ppv)
     }
-    pub unsafe fn add_ref(&mut self) -> u32 {
-        ((*self.vtable).AddRef)(self as *mut IAnimal as *mut ICat)
+    pub unsafe fn raw_add_ref(&mut self) -> u32 {
+        ((*self.vtable).iunknown.AddRef)(self as *mut IAnimal as *mut ICat)
     }
-    pub unsafe fn release(&mut self) -> u32 {
-        ((*self.vtable).Release)(self as *mut IAnimal as *mut ICat)
+    pub unsafe fn raw_release(&mut self) -> u32 {
+        ((*self.vtable).iunknown.Release)(self as *mut IAnimal as *mut ICat)
     }
 }
 
 impl IUnknown {
-    pub unsafe fn query_interface(&mut self, riid: *const IID, ppv: *mut *mut c_void) -> HRESULT {
+    pub fn query_interface<T: ComInterface>(&mut self) -> Result<ComPtr<T>, HRESULT> {
+        let ppv = std::ptr::null_mut::<*mut c_void>();
+        let hr = unsafe { self.raw_query_interface(&T::IID as *const IID, ppv) };
+        if failed(hr) {
+            return Err(hr);
+        }
+        Ok(ComPtr::new(unsafe { *ppv as *const T }))
+    }
+
+    pub unsafe fn raw_query_interface(
+        &mut self,
+        riid: *const IID,
+        ppv: *mut *mut c_void,
+    ) -> HRESULT {
         ((*self.vtable).QueryInterface)(self as *mut IUnknown as *mut ICat, riid, ppv)
     }
-    pub unsafe fn add_ref(&mut self) -> u32 {
+    pub unsafe fn raw_add_ref(&mut self) -> u32 {
         ((*self.vtable).AddRef)(self as *mut IUnknown as *mut ICat)
     }
-    pub unsafe fn release(&mut self) -> u32 {
+    pub unsafe fn raw_release(&mut self) -> u32 {
         ((*self.vtable).Release)(self as *mut IUnknown as *mut ICat)
     }
 }
@@ -117,7 +156,7 @@ unsafe extern "stdcall" fn query_interface(
     println!("Querying interface...");
     if *riid == IID_IUnknown || *riid == IID_ICAT || *riid == IID_IANIMAL {
         *ppv = this as *mut c_void;
-        (*this).add_ref();
+        (*this).raw_add_ref();
         NOERROR
     } else {
         E_NOINTERFACE
@@ -159,10 +198,13 @@ unsafe extern "stdcall" fn eat(_this: *mut ICat) -> HRESULT {
 impl Cat {
     fn new() -> Cat {
         println!("Allocating new Vtable...");
-        let vtable = Box::into_raw(Box::new(ICatVTable {
+        let iunknown = IUnknownVTable {
             QueryInterface: query_interface,
             Release: release,
             AddRef: add_ref,
+        };
+        let vtable = Box::into_raw(Box::new(ICatVTable {
+            iunknown,
             Eat: eat,
             IgnoreHumans: ignore_humans,
         }));
@@ -181,7 +223,7 @@ extern "stdcall" fn DllGetClassObject(rclsid: REFCLSID, riid: REFIID, ppv: *mut 
         }
         println!("Allocating new object...");
         let cat = Box::into_raw(Box::new(Cat::new()));
-        let hr = ((*(*cat).inner.vtable).QueryInterface)(cat as *mut ICat, riid, ppv);
+        let hr = ((*(*cat).inner.vtable).iunknown.QueryInterface)(cat as *mut ICat, riid, ppv);
         if failed(hr) {
             println!("Querying new object failed... Deallocating object...");
             let _ = Box::from_raw(cat);

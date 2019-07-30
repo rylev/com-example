@@ -10,7 +10,7 @@
 
 use common::{
     failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IID_IUnknown, CLSCTX_INPROC_SERVER,
-    COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID,
+    COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID, ComPtr
 };
 use server::{IAnimal, IUnknown, CLSID_CAT, IID_IANIMAL};
 use std::os::raw::c_void;
@@ -32,7 +32,7 @@ fn main() {
         }
     };
     println!("Got unknown.");
-    // let mut animal = std::ptr::null_mut::<c_void>();
+    let result = unknown.query_interface::<IAnimal>();
     // hr = (*(unknown as *mut IUnknown))
     //     .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
 
@@ -57,16 +57,6 @@ fn main() {
     uninitialize();
 }
 
-struct ComPtr<T> {
-    item: *const T,
-}
-
-impl<T> ComPtr<T> {
-    fn new(item: *const T) -> ComPtr<T> {
-        assert!(!item.is_null());
-        ComPtr { item }
-    }
-}
 
 // TODO: accept threading options
 fn initialize_ex() -> Result<(), HRESULT> {
