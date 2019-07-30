@@ -5,6 +5,7 @@ name = "com-client"
 version = "0.1.0"
 dependencies = [
  "common 0.1.0",
+ "server 0.1.0",
 ]
 
 [[package]]

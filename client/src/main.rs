@@ -9,10 +9,10 @@
 // }
 
 use common::{
-    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IAnimal, IID_IUnknown, IUnknown,
-    CLSCTX_INPROC_SERVER, CLSID_CAT, COINIT_APARTMENTTHREADED, IID_IANIMAL, LPVOID, REFCLSID,
-    REFIID,
+    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IID_IUnknown, CLSCTX_INPROC_SERVER,
+    COINIT_APARTMENTTHREADED, LPVOID, REFCLSID, REFIID,
 };
+use server::{IAnimal, IUnknown, CLSID_CAT, IID_IANIMAL};
 use std::os::raw::c_void;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
             &IID_IUnknown as REFIID,
             &mut unknown as *mut LPVOID,
         );
-        
+
         if failed(hr) {
             println!("Failed to get com class object {}", hr);
             return;
@@ -44,7 +44,7 @@ fn main() {
         let mut animal = std::ptr::null_mut::<c_void>();
         hr = (*(unknown as *mut IUnknown))
             .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
-        
+
         if failed(hr) {
             println!("Failed to get IAnimal interface");
             return;
