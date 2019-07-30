@@ -84,15 +84,15 @@ pub const CLSID_CAT: IID = IID {
 
 #[repr(C)]
 pub struct ICat {
-    vtable: *const ICatVTable,
+    pub vtable: *const ICatVTable,
 }
 #[repr(C)]
 pub struct IAnimal {
-    vtable: *const ICatVTable,
+    pub vtable: *const ICatVTable,
 }
 #[repr(C)]
 pub struct IUnknown {
-    vtable: *const ICatVTable,
+    pub vtable: *const ICatVTable,
 }
 
 #[allow(non_snake_case)]

@@ -6,8 +6,15 @@ use std::os::raw::c_void;
 
 #[repr(C)]
 pub struct Cat {
-    vtable: *const ICatVTable,
+    // vtable must always be valid and non-null
+    inner: ICat,
     ref_count: u32,
+}
+
+impl Drop for Cat {
+    fn drop(&mut self) {
+        let _ = unsafe { Box::from_raw(self.inner.vtable as *mut ICatVTable) };
+    }
 }
 
 extern "stdcall" fn query_interface(
@@ -19,7 +26,7 @@ extern "stdcall" fn query_interface(
     unsafe {
         if *riid == IID_IUnknown || *riid == IID_ICAT || *riid == IID_IANIMAL {
             *ppv = this as *mut c_void;
-            ((*(*(this as *mut Cat)).vtable).AddRef)(this);
+            ((*(*(this as *mut Cat)).inner.vtable).AddRef)(this);
             NOERROR
         } else {
             E_NOINTERFACE
@@ -37,6 +44,7 @@ extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
     }
 }
 
+// TODO: This could potentially be null or pointing to some invalid memory
 extern "stdcall" fn release(this: *mut ICat) -> u32 {
     println!("Releasing...");
     let this = this as *mut Cat;
@@ -46,7 +54,6 @@ extern "stdcall" fn release(this: *mut ICat) -> u32 {
         let count = (*this).ref_count;
         if count == 0 {
             println!("Count is 0. Freeing memory...");
-            let _ = Box::from_raw((*this).vtable as *mut ICatVTable);
             let _ = Box::from_raw(this);
         }
         count
@@ -74,7 +81,7 @@ impl Cat {
             IgnoreHumans: ignore_humans,
         }));
         Cat {
-            vtable,
+            inner: ICat { vtable },
             ref_count: 0,
         }
     }
@@ -88,7 +95,7 @@ extern "stdcall" fn DllGetClassObject(rclsid: REFCLSID, riid: REFIID, ppv: *mut 
         }
         println!("Allocating new object...");
         let cat = Box::into_raw(Box::new(Cat::new()));
-        let hr = ((*(*cat).vtable).QueryInterface)(cat as *mut ICat, riid, ppv);
+        let hr = ((*(*cat).inner.vtable).QueryInterface)(cat as *mut ICat, riid, ppv);
         if failed(hr) {
             println!("Querying new object failed... Deallocating object...");
             let _ = Box::from_raw(cat);
