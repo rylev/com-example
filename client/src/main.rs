@@ -30,6 +30,7 @@ fn main() {
             &IID_IUnknown as REFIID,
             &mut unknown as *mut LPVOID,
         );
+        
         if failed(hr) {
             println!("Failed to get com class object {}", hr);
             return;
@@ -38,9 +39,12 @@ fn main() {
             println!("Pointer to IUnknown is null");
             return;
         }
+        println!("Got unknown.");
+
         let mut animal = std::ptr::null_mut::<c_void>();
         hr = (*(unknown as *mut IUnknown))
             .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
+        
         if failed(hr) {
             println!("Failed to get IAnimal interface");
             return;
@@ -49,9 +53,10 @@ fn main() {
             println!("Pointer to IAnimal is null");
             return;
         }
+        println!("Got animal.");
+        (*(unknown as *mut IUnknown)).release();
 
         let animal = animal as *mut IAnimal;
-
         (*animal).eat();
 
         // This doesn't compile

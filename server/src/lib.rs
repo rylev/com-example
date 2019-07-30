@@ -19,6 +19,7 @@ extern "stdcall" fn query_interface(
     unsafe {
         if *riid == IID_IUnknown || *riid == IID_ICAT || *riid == IID_IANIMAL {
             *ppv = this as *mut c_void;
+            ((*(*(this as *mut Cat)).vtable).AddRef)(this);
             NOERROR
         } else {
             E_NOINTERFACE
@@ -31,6 +32,7 @@ extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
     let this = this as *mut Cat;
     unsafe {
         (*this).ref_count += 1;
+        println!("Count now {}", (*this).ref_count);
         (*this).ref_count
     }
 }
@@ -40,8 +42,11 @@ extern "stdcall" fn release(this: *mut ICat) -> u32 {
     let this = this as *mut Cat;
     unsafe {
         (*this).ref_count -= 1;
+        println!("Count now {}", (*this).ref_count);
         let count = (*this).ref_count;
         if count == 0 {
+            println!("Count is 0. Freeing memory...");
+            let _ = Box::from_raw((*this).vtable as *mut ICatVTable);
             let _ = Box::from_raw(this);
         }
         count
@@ -60,6 +65,7 @@ extern "stdcall" fn eat(this: *mut ICat) -> HRESULT {
 
 impl Cat {
     fn new() -> Cat {
+        println!("Allocating new Vtable...");
         let vtable = Box::into_raw(Box::new(ICatVTable {
             QueryInterface: query_interface,
             Release: release,
@@ -80,10 +86,11 @@ extern "stdcall" fn DllGetClassObject(rclsid: REFCLSID, riid: REFIID, ppv: *mut 
         if *rclsid != CLSID_CAT {
             return CLASS_E_CLASSNOTAVAILABLE;
         }
-
+        println!("Allocating new object...");
         let cat = Box::into_raw(Box::new(Cat::new()));
         let hr = ((*(*cat).vtable).QueryInterface)(cat as *mut ICat, riid, ppv);
         if failed(hr) {
+            println!("Querying new object failed... Deallocating object...");
             let _ = Box::from_raw(cat);
         }
         hr
