@@ -47,6 +47,10 @@ fn main() {
     // This doesn't compile
     // animal.ignore_humans();
 
+    // We must drop them now or else we'll get an error when they drop after we've uninitialized COM
+    drop(animal);
+    drop(unknown);
+
     uninitialize();
 }
 
