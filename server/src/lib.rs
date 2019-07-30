@@ -1,6 +1,6 @@
 use common::{
-    failed, IID_IUnknown, CLASS_E_CLASSNOTAVAILABLE, E_NOINTERFACE,
-    HRESULT, IID, LPVOID, NOERROR, REFCLSID, REFIID,
+    failed, IID_IUnknown, CLASS_E_CLASSNOTAVAILABLE, E_NOINTERFACE, HRESULT, IID, LPVOID, NOERROR,
+    REFCLSID, REFIID,
 };
 use std::os::raw::c_void;
 
@@ -42,13 +42,14 @@ pub struct IUnknown {
 #[repr(C)]
 pub struct ICatVTable {
     // IUnknown
-    pub QueryInterface: extern "stdcall" fn(*mut ICat, *const IID, *mut *mut c_void) -> HRESULT,
-    pub AddRef: extern "stdcall" fn(*mut ICat) -> u32,
-    pub Release: extern "stdcall" fn(*mut ICat) -> u32,
+    pub QueryInterface:
+        unsafe extern "stdcall" fn(*mut ICat, *const IID, *mut *mut c_void) -> HRESULT,
+    pub AddRef: unsafe extern "stdcall" fn(*mut ICat) -> u32,
+    pub Release: unsafe extern "stdcall" fn(*mut ICat) -> u32,
     // IAnimal
-    pub Eat: extern "stdcall" fn(*mut ICat) -> HRESULT,
+    pub Eat: unsafe extern "stdcall" fn(*mut ICat) -> HRESULT,
     // ICat
-    pub IgnoreHumans: extern "stdcall" fn(*mut ICat) -> HRESULT,
+    pub IgnoreHumans: unsafe extern "stdcall" fn(*mut ICat) -> HRESULT,
 }
 
 impl ICat {
@@ -97,6 +98,7 @@ impl IUnknown {
 
 #[repr(C)]
 pub struct Cat {
+    // inner must always be first because Cat is actually an ICat with one extra field at the end
     inner: ICat,
     ref_count: u32,
 }
@@ -107,38 +109,33 @@ impl Drop for Cat {
     }
 }
 
-extern "stdcall" fn query_interface(
+unsafe extern "stdcall" fn query_interface(
     this: *mut ICat,
     riid: *const IID,
     ppv: *mut *mut c_void,
 ) -> HRESULT {
     println!("Querying interface...");
-    unsafe {
-        if *riid == IID_IUnknown || *riid == IID_ICAT || *riid == IID_IANIMAL {
-            *ppv = this as *mut c_void;
-            ((*(*(this as *mut Cat)).inner.vtable).AddRef)(this);
-            NOERROR
-        } else {
-            E_NOINTERFACE
-        }
+    if *riid == IID_IUnknown || *riid == IID_ICAT || *riid == IID_IANIMAL {
+        *ppv = this as *mut c_void;
+        (*this).add_ref();
+        NOERROR
+    } else {
+        E_NOINTERFACE
     }
 }
 
-extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
+unsafe extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
     println!("Adding ref...");
     let this = this as *mut Cat;
-    unsafe {
-        (*this).ref_count += 1;
-        println!("Count now {}", (*this).ref_count);
-        (*this).ref_count
-    }
+    (*this).ref_count += 1;
+    println!("Count now {}", (*this).ref_count);
+    (*this).ref_count
 }
 
 // TODO: This could potentially be null or pointing to some invalid memory
-extern "stdcall" fn release(this: *mut ICat) -> u32 {
+unsafe extern "stdcall" fn release(this: *mut ICat) -> u32 {
     println!("Releasing...");
     let this = this as *mut Cat;
-    unsafe {
         (*this).ref_count -= 1;
         println!("Count now {}", (*this).ref_count);
         let count = (*this).ref_count;
@@ -147,15 +144,14 @@ extern "stdcall" fn release(this: *mut ICat) -> u32 {
             let _ = Box::from_raw(this);
         }
         count
-    }
 }
 
-extern "stdcall" fn ignore_humans(this: *mut ICat) -> HRESULT {
+unsafe extern "stdcall" fn ignore_humans(this: *mut ICat) -> HRESULT {
     println!("Ignoring...");
     NOERROR
 }
 
-extern "stdcall" fn eat(this: *mut ICat) -> HRESULT {
+unsafe extern "stdcall" fn eat(this: *mut ICat) -> HRESULT {
     println!("Eating...");
     NOERROR
 }
