@@ -11,58 +11,23 @@
 use common::{
     failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IAnimal, IID_IUnknown, IUnknown,
     CLSCTX_INPROC_SERVER, CLSID_CAT, COINIT_APARTMENTTHREADED, IID_IANIMAL, LPVOID, REFCLSID,
-    REFIID,
+    REFIID, comptr::ComPtr, IID_ICAT, ICat
 };
 use std::os::raw::c_void;
+use com_client::eat;
 
 fn main() {
     unsafe {
-        let mut hr = CoInitializeEx(std::ptr::null_mut::<c_void>(), COINIT_APARTMENTTHREADED);
+        // COM Library Initialisation
+        let hr = CoInitializeEx(std::ptr::null_mut::<c_void>(), COINIT_APARTMENTTHREADED);
         if failed(hr) {
-            println!("Failed to initialize COM");
+            println!("Failed to initialize COM Library!");
             return;
         }
-        let mut unknown = std::ptr::null_mut::<c_void>();
-        hr = CoGetClassObject(
-            &CLSID_CAT as REFCLSID,
-            CLSCTX_INPROC_SERVER,
-            std::ptr::null_mut::<c_void>(),
-            &IID_IUnknown as REFIID,
-            &mut unknown as *mut LPVOID,
-        );
-        
-        if failed(hr) {
-            println!("Failed to get com class object {}", hr);
-            return;
-        }
-        if unknown.is_null() {
-            println!("Pointer to IUnknown is null");
-            return;
-        }
-        println!("Got unknown.");
 
-        let mut animal = std::ptr::null_mut::<c_void>();
-        hr = (*(unknown as *mut IUnknown))
-            .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
-        
-        if failed(hr) {
-            println!("Failed to get IAnimal interface");
-            return;
-        }
-        if animal.is_null() {
-            println!("Pointer to IAnimal is null");
-            return;
-        }
-        println!("Got animal.");
-        (*(unknown as *mut IUnknown)).release();
+        eat();
 
-        let animal = animal as *mut IAnimal;
-        (*animal).eat();
-
-        // This doesn't compile
-        // hr = (*animal).ignore_humans();
-        (*animal).release();
-
+        // Uninitialise COM Library
         CoUninitialize();
     };
 }
