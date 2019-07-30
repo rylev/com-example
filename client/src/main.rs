@@ -9,10 +9,10 @@
 // }
 
 use common::{
-    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IID_IUnknown, CLSCTX_INPROC_SERVER,
-    COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID, ComPtr
+    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, ComPtr, IID_IUnknown, IUnknown,
+    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID,
 };
-use server::{IAnimal, IUnknown, CLSID_CAT, IID_IANIMAL};
+use server::{IAnimal, CLSID_CAT};
 use std::os::raw::c_void;
 
 fn main() {
@@ -24,7 +24,7 @@ fn main() {
     }
 
     let result = get_class_object(&CLSID_CAT);
-    let unknown = match result {
+    let mut unknown = match result {
         Ok(unknown) => unknown,
         Err(hr) => {
             println!("Failed to get com class object {}", hr);
@@ -93,7 +93,7 @@ fn get_class_object(iid: &IID) -> Result<ComPtr<IUnknown>, HRESULT> {
         return Err(hr);
     }
 
-    Ok(ComPtr::new(unknown as *const IUnknown))
+    Ok(unsafe { ComPtr::new(unknown as *const IUnknown) })
 }
 
 fn uninitialize() {

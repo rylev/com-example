@@ -1,6 +1,6 @@
 use common::{
-    failed, ComPtr, IID_IUnknown, CLASS_E_CLASSNOTAVAILABLE, E_NOINTERFACE, HRESULT, IID, LPVOID,
-    NOERROR, REFCLSID, REFIID,
+    failed, ComInterface, IID_IUnknown, IUnknown, IUnknownVTable, CLASS_E_CLASSNOTAVAILABLE,
+    E_NOINTERFACE, HRESULT, IID, LPVOID, NOERROR, REFCLSID, REFIID,
 };
 use std::os::raw::c_void;
 
@@ -25,10 +25,6 @@ pub const CLSID_CAT: IID = IID {
     data4: [0xA9, 0xF9, 0x05, 0xAC, 0x67, 0x52, 0x5E, 0x43],
 };
 
-pub trait ComInterface {
-    const IID: IID;
-}
-
 #[repr(C)]
 pub struct ICat {
     pub vtable: *const ICatVTable,
@@ -42,22 +38,6 @@ pub struct IAnimal {
 }
 impl ComInterface for IAnimal {
     const IID: IID = IID_IANIMAL;
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct IUnknownVTable {
-    pub QueryInterface:
-        unsafe extern "stdcall" fn(*mut ICat, *const IID, *mut *mut c_void) -> HRESULT,
-    pub AddRef: unsafe extern "stdcall" fn(*mut ICat) -> u32,
-    pub Release: unsafe extern "stdcall" fn(*mut ICat) -> u32,
-}
-#[repr(C)]
-pub struct IUnknown {
-    pub vtable: *const IUnknownVTable,
-}
-impl ComInterface for IUnknown {
-    const IID: IID = IID_IUnknown;
 }
 
 #[allow(non_snake_case)]
@@ -82,13 +62,13 @@ impl ICat {
         riid: *const IID,
         ppv: *mut *mut c_void,
     ) -> HRESULT {
-        ((*self.vtable).iunknown.QueryInterface)(self, riid, ppv)
+        (*(self as *mut ICat as *mut IUnknown)).raw_query_interface(riid, ppv)
     }
     pub unsafe fn raw_add_ref(&mut self) -> u32 {
-        ((*self.vtable).iunknown.AddRef)(self)
+        (*(self as *mut ICat as *mut IUnknown)).raw_add_ref()
     }
     pub unsafe fn raw_release(&mut self) -> u32 {
-        ((*self.vtable).iunknown.Release)(self)
+        (*(self as *mut ICat as *mut IUnknown)).raw_release()
     }
 }
 impl IAnimal {
@@ -100,38 +80,13 @@ impl IAnimal {
         riid: *const IID,
         ppv: *mut *mut c_void,
     ) -> HRESULT {
-        ((*self.vtable).iunknown.QueryInterface)(self as *mut IAnimal as *mut ICat, riid, ppv)
+        (*(self as *mut IAnimal as *mut IUnknown)).raw_query_interface(riid, ppv)
     }
     pub unsafe fn raw_add_ref(&mut self) -> u32 {
-        ((*self.vtable).iunknown.AddRef)(self as *mut IAnimal as *mut ICat)
+        (*(self as *mut IAnimal as *mut IUnknown)).raw_add_ref()
     }
     pub unsafe fn raw_release(&mut self) -> u32 {
-        ((*self.vtable).iunknown.Release)(self as *mut IAnimal as *mut ICat)
-    }
-}
-
-impl IUnknown {
-    pub fn query_interface<T: ComInterface>(&mut self) -> Result<ComPtr<T>, HRESULT> {
-        let ppv = std::ptr::null_mut::<*mut c_void>();
-        let hr = unsafe { self.raw_query_interface(&T::IID as *const IID, ppv) };
-        if failed(hr) {
-            return Err(hr);
-        }
-        Ok(ComPtr::new(unsafe { *ppv as *const T }))
-    }
-
-    pub unsafe fn raw_query_interface(
-        &mut self,
-        riid: *const IID,
-        ppv: *mut *mut c_void,
-    ) -> HRESULT {
-        ((*self.vtable).QueryInterface)(self as *mut IUnknown as *mut ICat, riid, ppv)
-    }
-    pub unsafe fn raw_add_ref(&mut self) -> u32 {
-        ((*self.vtable).AddRef)(self as *mut IUnknown as *mut ICat)
-    }
-    pub unsafe fn raw_release(&mut self) -> u32 {
-        ((*self.vtable).Release)(self as *mut IUnknown as *mut ICat)
+        (*(self as *mut IAnimal as *mut IUnknown)).raw_release()
     }
 }
 
@@ -149,7 +104,7 @@ impl Drop for Cat {
 }
 
 unsafe extern "stdcall" fn query_interface(
-    this: *mut ICat,
+    this: *mut IUnknown,
     riid: *const IID,
     ppv: *mut *mut c_void,
 ) -> HRESULT {
@@ -163,7 +118,7 @@ unsafe extern "stdcall" fn query_interface(
     }
 }
 
-unsafe extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
+unsafe extern "stdcall" fn add_ref(this: *mut IUnknown) -> u32 {
     println!("Adding ref...");
     let this = this as *mut Cat;
     (*this).ref_count += 1;
@@ -172,7 +127,7 @@ unsafe extern "stdcall" fn add_ref(this: *mut ICat) -> u32 {
 }
 
 // TODO: This could potentially be null or pointing to some invalid memory
-unsafe extern "stdcall" fn release(this: *mut ICat) -> u32 {
+unsafe extern "stdcall" fn release(this: *mut IUnknown) -> u32 {
     println!("Releasing...");
     let this = this as *mut Cat;
     (*this).ref_count -= 1;
@@ -223,7 +178,7 @@ extern "stdcall" fn DllGetClassObject(rclsid: REFCLSID, riid: REFIID, ppv: *mut 
         }
         println!("Allocating new object...");
         let cat = Box::into_raw(Box::new(Cat::new()));
-        let hr = ((*(*cat).inner.vtable).iunknown.QueryInterface)(cat as *mut ICat, riid, ppv);
+        let hr = (*(cat as *mut ICat)).raw_query_interface(riid, ppv);
         if failed(hr) {
             println!("Querying new object failed... Deallocating object...");
             let _ = Box::from_raw(cat);
