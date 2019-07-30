@@ -33,6 +33,13 @@ fn main() {
     };
     println!("Got unknown.");
     let result = unknown.query_interface::<IAnimal>();
+    let cat = match result {
+        Ok(cat) => cat,
+        Err(hr) => {
+            println!("We couldn't get a cat: {}", hr);
+            return;
+        }
+    };
     // hr = (*(unknown as *mut IUnknown))
     //     .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
 
