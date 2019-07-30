@@ -9,10 +9,10 @@
 // }
 
 use common::{
-    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IAnimal, IID_IUnknown, IUnknown,
-    CLSCTX_INPROC_SERVER, CLSID_CAT, COINIT_APARTMENTTHREADED, IID_IANIMAL, LPVOID, REFCLSID,
-    REFIID, comptr::ComPtr, IID_ICAT, ICat
+    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, IID_IUnknown, CLSCTX_INPROC_SERVER,
+    COINIT_APARTMENTTHREADED, LPVOID, REFCLSID, REFIID,
 };
+use server::{IAnimal, IUnknown, CLSID_CAT, IID_IANIMAL};
 use std::os::raw::c_void;
 use com_client::eat;
 
@@ -24,8 +24,42 @@ fn main() {
             println!("Failed to initialize COM Library!");
             return;
         }
+        let mut unknown = std::ptr::null_mut::<c_void>();
+        hr = CoGetClassObject(
+            &CLSID_CAT as REFCLSID,
+            CLSCTX_INPROC_SERVER,
+            std::ptr::null_mut::<c_void>(),
+            &IID_IUnknown as REFIID,
+            &mut unknown as *mut LPVOID,
+        );
 
-        eat();
+        if failed(hr) {
+            println!("Failed to get com class object {}", hr);
+            return;
+        }
+        if unknown.is_null() {
+            println!("Pointer to IUnknown is null");
+            return;
+        }
+        println!("Got unknown.");
+
+        let mut animal = std::ptr::null_mut::<c_void>();
+        hr = (*(unknown as *mut IUnknown))
+            .query_interface(&mut IID_IANIMAL, &mut animal as *mut LPVOID);
+
+        if failed(hr) {
+            println!("Failed to get IAnimal interface");
+            return;
+        }
+        if animal.is_null() {
+            println!("Pointer to IAnimal is null");
+            return;
+        }
+        println!("Got animal.");
+        (*(unknown as *mut IUnknown)).release();
+
+        let animal = animal as *mut IAnimal;
+        (*animal).eat();
 
         // Uninitialise COM Library
         CoUninitialize();
