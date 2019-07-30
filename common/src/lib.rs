@@ -1,5 +1,5 @@
 // These are all defined in [winapi](https://github.com/retep998/winapi-rs)
-
+pub mod comptr;
 use std::os::raw::c_void;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -26,6 +26,7 @@ pub type c_long = i32;
 #[allow(non_camel_case_types)]
 pub type c_ulong = u32;
 pub type LPVOID = *mut c_void;
+pub type LPUNKNOWN = *mut IUnknown;
 pub type DWORD = c_ulong;
 
 pub const COINIT_APARTMENTTHREADED: DWORD = 0x2;
@@ -53,6 +54,8 @@ extern "system" {
     // Closes the COM library on the current thread, unloads all DLLs loaded by the thread, frees any
     // other resources that the thread maintains, and forces all RPC connections on the thread to close.
     pub fn CoUninitialize() -> ();
+
+    pub fn CoCreateInstance(rclsid: REFCLSID, pUnkOuter: LPUNKNOWN, dwClsContext: DWORD, riid: REFIID, ppv: *mut LPVOID) -> HRESULT;
 }
 
 pub const IID_IUnknown: IID = IID {
