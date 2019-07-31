@@ -1,7 +1,7 @@
 // An issue with having T be Human is that I am never
 // actually possessing the entire Human struct, just
 // an interface pointer.
-use super::*;
+use crate::iunknown::RawIUnknown;
 
 use std::ops::Deref;
 use std::ops::DerefMut;
@@ -31,7 +31,7 @@ impl<T> ComPtr<T> {
         ComPtr { ptr }
     }
 
-    pub fn add_ref(&self) {
+    fn add_ref(&self) {
         unsafe { (*(self.ptr.as_ptr() as *mut RawIUnknown)).raw_add_ref() };
     }
 }
