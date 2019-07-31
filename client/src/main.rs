@@ -9,8 +9,9 @@
 // }
 
 use common::{
-    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, ComPtr, IID_IUnknown, IUnknown,
-    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID,
+    failed, CoGetClassObject, CoInitializeEx, CoUninitialize, ComInterface, ComPtr, IID_IUnknown,
+    IUnknown, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID,
+    REFIID,
 };
 use server::{IAnimal, ICat, CLSID_CAT};
 use std::os::raw::c_void;
@@ -46,9 +47,12 @@ fn main() {
     animal.eat();
     assert!(animal.query_interface::<ICat>().is_some());
     assert!(animal.query_interface::<IUnknown>().is_some());
+    assert!(animal.query_interface::<IExample>().is_none());
 
-    // This doesn't compile
+    // These doesn't compile
     // animal.ignore_humans();
+    // animal.raw_add_ref();
+    // animal.add_ref();
 
     // We must drop them now or else we'll get an error when they drop after we've uninitialized COM
     drop(animal);
@@ -91,4 +95,16 @@ fn get_class_object(iid: &IID) -> Result<ComPtr<IUnknown>, HRESULT> {
 
 fn uninitialize() {
     unsafe { CoUninitialize() }
+}
+
+#[repr(C)]
+pub struct IExample {}
+pub const IID_IEXAMPLE: IID = IID {
+    data1: 0xC5F45CBC,
+    data2: 0x4439,
+    data3: 0x418C,
+    data4: [0xA9, 0xF9, 0x05, 0xAC, 0x67, 0x52, 0x5E, 0x43],
+};
+impl ComInterface for IExample {
+    const IID: IID = IID_IEXAMPLE;
 }
