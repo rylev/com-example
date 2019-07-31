@@ -5,38 +5,48 @@ use super::*;
 
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::ptr::NonNull;
 
 pub struct ComPtr<T> {
-    raw_ptr: *mut T,
+    ptr: NonNull<T>,
 }
 
 impl<T> Deref for ComPtr<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        assert!(!self.raw_ptr.is_null());
-        unsafe { &*self.raw_ptr }
+        unsafe { self.ptr.as_ref() }
     }
 }
 
 impl<T> DerefMut for ComPtr<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        assert!(!self.raw_ptr.is_null());
-        unsafe { &mut *self.raw_ptr }
+        unsafe { self.ptr.as_mut() }
     }
 }
 
 impl<T> ComPtr<T> {
-    /// *mut T must be safely convertable to *mut RawIUnknown
-    pub unsafe fn new(raw_ptr: *mut T) -> Self {
-        ComPtr { raw_ptr }
+    /// NonNull<T> must be safely convertable to *mut RawIUnknown
+    pub unsafe fn new(ptr: NonNull<T>) -> Self {
+        ComPtr { ptr }
+    }
+
+    pub fn add_ref(&self) {
+        unsafe { (*(self.ptr.as_ptr() as *mut RawIUnknown)).raw_add_ref() };
+    }
+}
+
+impl<T> Clone for ComPtr<T> {
+    fn clone(&self) -> Self {
+        self.add_ref();
+        ComPtr { ptr: self.ptr }
     }
 }
 
 impl<T> Drop for ComPtr<T> {
     fn drop(&mut self) {
         unsafe {
-            (*(self.raw_ptr as *mut RawIUnknown)).raw_release();
+            (*(self.ptr.as_ptr() as *mut RawIUnknown)).raw_release();
         }
     }
 }

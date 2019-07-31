@@ -86,7 +86,7 @@ fn get_class_object(iid: &IID) -> Result<ComPtr<IUnknown>, HRESULT> {
         return Err(hr);
     }
 
-    Ok(unsafe { ComPtr::new(unknown as *mut IUnknown) })
+    Ok(unsafe { ComPtr::new(std::ptr::NonNull::new(unknown as *mut IUnknown).unwrap()) })
 }
 
 fn uninitialize() {

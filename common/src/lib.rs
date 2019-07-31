@@ -112,7 +112,7 @@ impl RawIUnknown {
             assert!(hr == E_NOINTERFACE);
             return None;
         }
-        Some(unsafe { ComPtr::new(ppv as *mut T) })
+        Some(unsafe { ComPtr::new(std::ptr::NonNull::new(ppv as *mut T)?) })
     }
 }
 
