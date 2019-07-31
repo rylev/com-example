@@ -5,39 +5,48 @@ use super::*;
 
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::ptr::NonNull;
 
-pub struct ComPtr<'a, T: 'a> {
-    // Interface pointer for interface T as a box.
-    raw_ptr: &'a mut T,
+pub struct ComPtr<T> {
+    ptr: NonNull<T>,
 }
 
-impl<T> Deref for ComPtr<'_, T> {
+impl<T> Deref for ComPtr<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.raw_ptr
+        unsafe { self.ptr.as_ref() }
     }
 }
 
-impl<T> DerefMut for ComPtr<'_, T> {
+impl<T> DerefMut for ComPtr<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.raw_ptr
+        unsafe { self.ptr.as_mut() }
     }
 }
 
-impl<T> ComPtr<'_, T> {
-    pub unsafe fn new(raw_ptr: *const T) -> Self {
-        let raw_ptr = &mut *(raw_ptr as *mut T);
+impl<T> ComPtr<T> {
+    /// NonNull<T> must be safely convertable to *mut RawIUnknown
+    pub unsafe fn new(ptr: NonNull<T>) -> Self {
+        ComPtr { ptr }
+    }
 
-        ComPtr { raw_ptr }
+    pub fn add_ref(&self) {
+        unsafe { (*(self.ptr.as_ptr() as *mut RawIUnknown)).raw_add_ref() };
     }
 }
 
-impl<T> Drop for ComPtr<'_, T> {
+impl<T> Clone for ComPtr<T> {
+    fn clone(&self) -> Self {
+        self.add_ref();
+        ComPtr { ptr: self.ptr }
+    }
+}
+
+impl<T> Drop for ComPtr<T> {
     fn drop(&mut self) {
         unsafe {
-            (*(self.raw_ptr as *mut T as *mut IUnknown)).raw_release();
+            (*(self.ptr.as_ptr() as *mut RawIUnknown)).raw_release();
         }
     }
 }
-
