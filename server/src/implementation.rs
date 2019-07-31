@@ -1,8 +1,10 @@
 use std::os::raw::c_void;
 
-use crate::interface::{ICat, ICatVTable, RawICat, IID_IANIMAL, IID_ICAT};
+use crate::interface::{
+    ianimal::IID_IANIMAL,
+    icat::{ICat, ICatVTable, RawICat, IID_ICAT},
+};
 use common::{IID_IUnknown, IUnknownVTable, RawIUnknown, E_NOINTERFACE, HRESULT, IID, NOERROR};
-
 
 #[repr(C)]
 pub struct Cat {
@@ -84,4 +86,3 @@ impl Cat {
         }
     }
 }
-

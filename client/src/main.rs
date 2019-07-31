@@ -61,7 +61,6 @@ fn main() {
     uninitialize();
 }
 
-
 // TODO: accept threading options
 fn initialize_ex() -> Result<(), HRESULT> {
     let hr = unsafe { CoInitializeEx(std::ptr::null_mut::<c_void>(), COINIT_APARTMENTTHREADED) };
