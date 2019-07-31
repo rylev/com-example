@@ -35,16 +35,6 @@ impl<T> ComPtr<T> {
     }
 }
 
-impl<T> Clone for ComPtr<T> {
-    fn clone(&self) -> ComPtr<T> {
-        assert!(!self.raw_ptr.is_null());
-        unsafe { (*(self.raw_ptr as *mut IUnknown)).raw_add_ref() };
-        ComPtr {
-            raw_ptr: self.raw_ptr,
-        }
-    }
-}
-
 impl<T> Drop for ComPtr<T> {
     fn drop(&mut self) {
         unsafe {
@@ -52,4 +42,3 @@ impl<T> Drop for ComPtr<T> {
         }
     }
 }
-

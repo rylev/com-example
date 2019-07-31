@@ -92,12 +92,12 @@ pub struct IUnknown {
 
 impl IUnknown {
     pub fn query_interface<T: ComInterface>(&mut self) -> Result<ComPtr<T>, HRESULT> {
-        let ppv = std::ptr::null_mut::<*mut c_void>();
-        let hr = unsafe { self.raw_query_interface(&T::IID as *const IID, ppv) };
+        let mut ppv = std::ptr::null_mut::<c_void>();
+        let hr = unsafe { self.raw_query_interface(&T::IID as *const IID, &mut ppv) };
         if failed(hr) {
             return Err(hr);
         }
-        Ok(unsafe { ComPtr::new(*ppv as *const T) })
+        Ok(unsafe { ComPtr::new(ppv as *const T) })
     }
 
     pub unsafe fn raw_query_interface(
