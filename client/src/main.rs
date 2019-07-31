@@ -12,7 +12,7 @@ use common::{
     failed, CoGetClassObject, CoInitializeEx, CoUninitialize, ComPtr, IID_IUnknown, IUnknown,
     CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, HRESULT, IID, LPVOID, REFCLSID, REFIID,
 };
-use server::{IAnimal, CLSID_CAT};
+use server::{IAnimal, ICat, CLSID_CAT};
 use std::os::raw::c_void;
 
 fn main() {
@@ -31,18 +31,21 @@ fn main() {
             return;
         }
     };
+
     println!("Got unknown.");
     let result = unknown.query_interface::<IAnimal>();
     let mut animal = match result {
-        Ok(animal) => animal,
-        Err(hr) => {
-            println!("Failed to get an animal: {}", hr);
+        Some(animal) => animal,
+        None => {
+            println!("Failed to get an animal");
             return;
         }
     };
 
     println!("Got animal.");
     animal.eat();
+    assert!(animal.query_interface::<ICat>().is_some());
+    assert!(animal.query_interface::<IUnknown>().is_some());
 
     // This doesn't compile
     // animal.ignore_humans();
@@ -83,7 +86,7 @@ fn get_class_object(iid: &IID) -> Result<ComPtr<IUnknown>, HRESULT> {
         return Err(hr);
     }
 
-    Ok(unsafe { ComPtr::new(unknown as *const IUnknown) })
+    Ok(unsafe { ComPtr::new(std::ptr::NonNull::new(unknown as *mut IUnknown).unwrap()) })
 }
 
 fn uninitialize() {
