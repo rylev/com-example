@@ -27,10 +27,8 @@ impl<T> DerefMut for ComPtr<T> {
 }
 
 impl<T> ComPtr<T> {
-    // *mut T must be safely convertable to *mut IUnknown
-    pub unsafe fn new(raw_ptr: *const T) -> Self {
-        let raw_ptr = &mut *(raw_ptr as *mut T);
-
+    /// *mut T must be safely convertable to *mut RawIUnknown
+    pub unsafe fn new(raw_ptr: *mut T) -> Self {
         ComPtr { raw_ptr }
     }
 }
@@ -38,7 +36,7 @@ impl<T> ComPtr<T> {
 impl<T> Drop for ComPtr<T> {
     fn drop(&mut self) {
         unsafe {
-            (*(self.raw_ptr as *mut IUnknown)).raw_release();
+            (*(self.raw_ptr as *mut RawIUnknown)).raw_release();
         }
     }
 }
